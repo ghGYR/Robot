@@ -1,0 +1,39 @@
+import pygame
+from pygame.locals import *
+
+
+class Brush():
+
+    def __init__(self):
+        pass
+
+
+class Painter():
+
+    def __init__(self):
+        self.screen = pygame.display.set_mode((800, 600))
+        pygame.display.set_caption("Chat")
+        self.clock = pygame.time.Clock()
+
+    def run(self):
+        self.screen.fill((0, 0, 0))
+        while True:
+            # max fps limit
+            self.clock.tick(30)
+            for event in pygame.event.get():
+                if event.type == QUIT:
+                    return
+                elif event.type == KEYDOWN:
+                    pass
+                elif event.type == MOUSEBUTTONDOWN:
+                    pass
+                elif event.type == MOUSEMOTION:
+                    pass
+                elif event.type == MOUSEBUTTONUP:
+                    pass
+
+            pygame.display.update()
+
+if __name__ == '__main__':
+    app = Painter()
+    app.run()

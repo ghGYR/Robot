@@ -1,101 +1,128 @@
-import requests
+# 设置用户类
 import json
-import random
+import multiprocessing
 
 
-def Turning(message, userid):
-    url = "http://www.tuling123.com/openapi/api"
-    print(message, " ", userid)
-    payload = {"key": "c8500f7e1a344755b0eefcbddc21f770", "info": message, "userid": userid}
-    r = requests.post(url, data=payload)
-    re = json.loads(r.text)
-    print(re)
-    furl = re.get("url")
-    if furl is not None:
-        pic = download(furl)
-        return re['text'] + furl
-    return re['text']
+class User():
 
-
-def download(furl):
-    r = requests.get(furl)
-    print(r.text)
-
-
-# 设置用户类9
-class user():
-
-    def __init__(self, userid, authority):
+    def __init__(self, username, userid, ChatParames={}):
         self.userid = userid
-        # 服务权限
-        self.GroupAuthority = {}
-        self.authority = authority
-    # 查询权限
-
-    def GetAuthority(self, Group):
-        # 查看是否有权限，否则赋值权限
-        if Group not in self.GroupAuthority.keys():
-            # 默认在该聊天环境下各项指令服务的权限
-            self.GroupAuthority[Group] = {"isTalk2sb": self.authority[0], "chatting": self.authority[1]}
-
-        return self.GroupAuthority[Group]
+        self.username = username
+        # 服务参数表
+        self.ChatParames = ChatParames if type(ChatParames) is dict else {}
 
 
 # 定义机器人属性
-class Robot():
+class Robot(multiprocessing.Process):
 
-    def __init__(self, UserLists):
-        self.serveList = {"isTalk2sb": self.isTalk2sb, "chatting": self.chatting}
-        self.group = u"GYR"
-        self.user = u"GYR"
-        self.UserLists = UserLists
+    def __init__(self):
+        super(multiprocessing.Process, self).__init__()
+        self.UserList = {}
+        self.GroupParames = {}
+        self.load("info.json")
+        self.ServeFunList = {}
 
-    # 服务控制
-    def Serve(self, group, username, message):
-        # 当前所在的聊天环境,即服务环境
-        self.group = group
+    # 设置用户参数
+
+    def SetUser(self, UserName, userid, ChatParames={}):
+        user = User(UserName, userid, ChatParames)
+        self.UserList[UserName] = user
+        self.SaveChange()
+    # 查询用户参数
+
+    def GetUser(self, UserName):
+        if UserName not in self.UserList.keys():
+            print(UserName, "#Not in UserList, Need to set:")
+            userid = input("userid:")
+            print("set serve parames in this chat:")
+            ChatParames = {}
+            ChatParames[self.Chat] = {}
+            for serve in self.ServeFunList.keys():
+                parames = int(input(serve + ":"))
+                ChatParames[self.Chat][serve] = parames
+            self.SetUser(UserName, userid, ChatParames)
+        return self.UserList[UserName]
+    # 注册服务功能
+
+    def register_ServeFun(self, Serve_name):
+        print("Adding Serve Function:", Serve_name)
+
+        def wraper(fun):
+            self.ServeFunList[Serve_name] = fun
+            return fun
+        print("Done")
+        return wraper
+
+    # 注册服务解析
+    def Register_ServeAnaly(self):
+        print("Register Serve Analy Function")
+
+        def wrapper(fun):
+            self.GetServeName = fun
+            return fun
+        return wrapper
+
+    # 服务
+    def MsgProExcute(self, Chat, UserName, Msg):
+        # 当前所在的聊天环境,即处理环境
+        self.Chat = Chat
         # 服务对象
-        self.user = self.UserLists[username]
+        self.user = self.GetUser(UserName)
         # 解析服务
-        serve_name, serve_parames = self.analy(message)
-        # 查看在当前聊天环境下的授权
-        authority = self.user.GetAuthority(self.group)[serve_name]
-        # 若获得服务授权就服务，否则停止服务，返回服务结果
-        response = self.serveList[serve_name](serve_parames) if authority == 1 else self.RandomResponse()
-        return response
- 
-    #   命令解析
-    def analy(self, message):
-        if message == u"不要说话":
-            serve_name = "isTalk2sb"
-            serve_parames = [0, self.UserLists.keys()]
-        elif message == u"可以说话":
-            serve_name = "isTalk2sb"
-            serve_parames = [1, self.UserLists.keys()]
+        serve_List = self.GetServeName(Msg)
+        # print(serve_List)
+        # 执行服务
+        for serve_name in serve_List:
+            if serve_name in self.ServeFunList.keys():
+                fun = self.ServeFunList[serve_name]
+                fun(Msg)
+
+    def SetGroupParames(self, Chat, name, parame):
+        if Chat not in self.GroupParames.keys():
+            self.GroupParames[Chat] = {}
+        self.GroupParames[Chat][name] = parame
+        self.SaveChange()
+
+    def GetGroupParames(self, Chat, name):
+        if Chat not in self.GroupParames.keys():
+            parame = int(input("set parames [%s][%s]" % (Chat, name)))
+            self.SetGroupParames(Chat, name, parame)
+        elif name not in self.GroupParames[Chat].keys():
+            parame = int(input("set parames [%s][%s]" % (Chat, name)))
+            self.SetGroupParames(Chat, name, parame)
+        return self.GroupParames[Chat][name]
+    # 获取服务参数
+
+    def GetParames(self, user, Chat, FunName):
+        if Chat in user.ChatParames.keys():
+            if FunName not in user.ChatParames[Chat].keys():
+                user.ChatParames[Chat][FunName] = int(input("set parames[%s[[%s][%s]" % (user.username, Chat, FunName)))
+                self.SaveChange()
         else:
-            serve_name = "chatting"
-            serve_parames = message
+            user.ChatParames[Chat] = {}
+            user.ChatParames[Chat][FunName] = int(input("set parames[%s[[%s][%s]" % (user.username, Chat, FunName)))
+            self.SaveChange()
+        return user.ChatParames[Chat][FunName]
 
-        return serve_name, serve_parames
+    def SaveChange(self):
+        user_info = []
+        for user in self.UserList.values():
+            info = [user.username, user.userid, user.ChatParames]
+            user_info.append(info)
+        robot_info = [user_info, self.GroupParames]
+        # print(robot_info)
+        with open("info.json", "w") as f:
+            json.dump(robot_info, f)
 
-    # 具体服务
-    # 聊天权限修改
-    def isTalk2sb(self, serve_parames):
-        for user in serve_parames[1]:
-            ob = self.UserLists[user]
-            if self.group not in ob.GroupAuthority.keys():
-                ob.GroupAuthority[self.group] = {"isTalk2sb": ob.authority[0], "chatting": serve_parames[0]}
-            else:
-                ob.GroupAuthority[self.group]["chatting"] = serve_parames[0]
-        # 从语料库中通过一定原则选取丰富的语料回答,可以是图片也可以是语言，以情绪和场景分类
-        return "Roger"
-    # 聊天服务
-
-    def chatting(self, message):
-        response = Turning(message, self.user.userid)
-        return response
-
-    def RandomResponse(self):
-        num = random.randint(10, 40)
-        response = '@%s@%s' % ('img', "../data/face_img/images/face_" + str(num) + ".gif")
-        return response
+    def load(self, file):
+        try:
+            print("import configure info")
+            with open(file, "r", encoding='utf-8') as f:
+                robot_info = json.load(f)
+            user_info = robot_info[0]
+            self.GroupParames = robot_info[1]
+            for user in user_info:
+                # print(user)
+                self.UserList[user[0]] = User(user[0], user[1], user[2])
+        except:
+            print("No init configure info")

@@ -1,0 +1,7 @@
+from dog import*
+from wechat import*
+
+dog.start()
+dog.Demaon=True
+wechat.start()
+dog.Demaon=True

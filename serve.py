@@ -1,42 +1,17 @@
 # coding=utf8
-import sys
-sys.path.append("../itchat/")
+from dog import*
 from itchat.content import *
-import itchat
-from msg_pro import*
 
-msgpro = {
-    TEXT: Text_pro,
-    PICTURE: Picture_pro,
-    VIDEO: Video_pro,
-    NOTE: Note_pro,
-    SHARING: Other_pro,
-    RECORDING: Other_pro,
-    VOICE: Other_pro,
-    ATTACHMENT: Other_pro,
-    FRIENDS: Other_pro,
-    SYSTEM: Other_pro}
-# 私聊
+
 @itchat.msg_register(INCOME_MSG, isFriendChat=True)
 def friendChat_pro(msg):
     # 获得发送者昵称(包括手机端自己)
     friend = itchat.search_friends(userName=msg.FromUserName)
-    friendname = msg.FromUserName if friend is None else friend["NickName"]
+    chat = msg.FromUserName if friend is None else friend["NickName"]
     # 获取私聊名
-    if friendname == myName:
-        filename = itchat.search_friends(userName=msg.ToUserName)["NickName"]
-    else:
-        filename = friendname
-    # 处理消息
-    message, response = msgpro[msg.type](msg, friendname, filename)
-    # 打印消息
-    print("%s##%s" % (friendname, message))
-    # 保存收到的消息
-    SaveMessage("friends/" + filename, friendname + "##" + message)
-    # 保存回复的消息
-    if response is not None:
-        SaveMessage("friends/" + filename, "auto-" + myName + "##" + response)
-    return response
+    # 将消息发送给机器人处理
+    # dog.recive()
+    dog.MsgProExcute(chat, chat, msg)
 
 
 # 群聊
@@ -48,23 +23,13 @@ def GroupChat_pro(msg):
     # 获得发送者昵称（包括手机端自己）
     who = msg.ActualNickName
     # 处理消息
-    message, response = msgpro[msg.type](msg, who, RoomName)
-    # 打印消息
-    print("%s@%s##%s" % (RoomName, who, message))
-    # 保存收到的消息
-    SaveMessage("groups/" + RoomName, who + "##" + message)
-    # 保存回复的消息
-    if response is not None:
-        SaveMessage("groups/" + RoomName, "auto-" + myName + "##" + response)
-    return response
+    dog.MsgProExcute(RoomName, who, msg)
 
 
 # 登陆
 itchat.auto_login(enableCmdQR=True, hotReload=True, statusStorageDir='cache.pkl')
-# 运行
-myName = itchat.search_friends()["NickName"]
 itchat.run(debug=True)
-
+dog.run()
 
 # 解析消息，来自哪里
 # 自动回复
